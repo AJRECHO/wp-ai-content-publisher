@@ -3,7 +3,7 @@
  * Plugin Name:       WP AI Content Publisher
  * Plugin URI:        https://github.com/AJRECHO/wp-ai-content-publisher
  * Description:       从 RSS 自动抓取文章，用 AI（DeepSeek / 任意 OpenAI 兼容接口）忠实翻译润色成中文，自动配图、设封面、打标签后发布到 WordPress。支持定时随机发布、谷时省费、分类轮换、关键词过滤。所有配置均在后台可视化设置，开箱即用。
- * Version:           1.0.0
+ * Version:           1.1.0
  * Requires at least: 5.6
  * Requires PHP:      7.4
  * Author:            WP AI Content Publisher Contributors
@@ -15,13 +15,14 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'AICP_VERSION', '1.0.0' );
+define( 'AICP_VERSION', '1.1.0' );
 define( 'AICP_PLUGIN_FILE', __FILE__ );
 define( 'AICP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AICP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 require_once AICP_PLUGIN_DIR . 'includes/class-settings.php';
 require_once AICP_PLUGIN_DIR . 'includes/class-publisher.php';
+require_once AICP_PLUGIN_DIR . 'includes/class-gallery.php';
 require_once AICP_PLUGIN_DIR . 'includes/class-rest.php';
 require_once AICP_PLUGIN_DIR . 'includes/class-admin.php';
 
@@ -45,6 +46,9 @@ final class AICP_Plugin {
     /** @var AICP_Admin */
     public $admin;
 
+    /** @var AICP_Gallery */
+    public $gallery;
+
     public static function instance() {
         if ( null === self::$instance ) {
             self::$instance = new self();
@@ -55,13 +59,20 @@ final class AICP_Plugin {
     private function __construct() {
         $this->settings  = new AICP_Settings();
         $this->publisher = new AICP_Publisher( $this->settings );
-        $this->rest      = new AICP_REST( $this->settings, $this->publisher );
-        $this->admin     = new AICP_Admin( $this->settings, $this->publisher );
+        $this->gallery   = new AICP_Gallery( $this->settings );
+        $this->rest      = new AICP_REST( $this->settings, $this->publisher, $this->gallery );
+        $this->admin     = new AICP_Admin( $this->settings, $this->publisher, $this->gallery );
 
         register_activation_hook( AICP_PLUGIN_FILE, array( $this, 'on_activate' ) );
         register_deactivation_hook( AICP_PLUGIN_FILE, array( $this, 'on_deactivate' ) );
 
         add_action( 'init', array( $this->publisher, 'maybe_schedule' ) );
+        add_action( AICP_Publisher::CRON_HOOK, array( $this, 'cron_gallery' ), 20 );
+    }
+
+    /** 补货任务挂在同一 cron 上，优先级 20（在发布之后跑），失败不影响发布 */
+    public function cron_gallery() {
+        $this->gallery->fetch( false );
     }
 
     public function on_activate() {

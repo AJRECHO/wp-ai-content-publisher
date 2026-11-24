@@ -13,10 +13,13 @@ class AICP_REST {
     private $settings;
     /** @var AICP_Publisher */
     private $publisher;
+    /** @var AICP_Gallery */
+    private $gallery;
 
-    public function __construct( $settings, $publisher ) {
+    public function __construct( $settings, $publisher, $gallery = null ) {
         $this->settings  = $settings;
         $this->publisher = $publisher;
+        $this->gallery   = $gallery;
         add_action( 'rest_api_init', array( $this, 'register' ) );
     }
 
@@ -29,6 +32,9 @@ class AICP_REST {
             '/reset'        => array( 'POST', 'reset' ),
             '/log'          => array( 'GET',  'get_log' ),
             '/delete-post'  => array( 'POST', 'delete_post' ),
+            '/gallery-fetch'   => array( 'POST', 'gallery_fetch' ),
+            '/gallery-approve' => array( 'POST', 'gallery_approve' ),
+            '/gallery-reject'  => array( 'POST', 'gallery_reject' ),
         );
         foreach ( $routes as $path => $def ) {
             register_rest_route( self::NS, $path, array(
@@ -57,6 +63,9 @@ class AICP_REST {
                 );
             case '/reset':
                 return array( 'what' => array( 'type' => 'string', 'default' => 'log' ) );
+            case '/gallery-approve':
+            case '/gallery-reject':
+                return array( 'ids' => array( 'type' => 'array', 'default' => array() ) );
             case '/delete-post':
                 return array( 'post_id' => array( 'type' => 'integer', 'required' => true ) );
             default:
@@ -183,4 +192,36 @@ class AICP_REST {
 
         return array( 'ok' => true, 'deleted' => $id );
     }
+
+    /* ---------------- 封面图库补货 ---------------- */
+
+    public function gallery_fetch( $req ) {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return new WP_Error( 'forbidden', '仅管理员可操作', array( 'status' => 403 ) );
+        }
+        if ( ! $this->gallery ) { return new WP_Error( 'na', '图库组件未加载', array( 'status' => 500 ) ); }
+        $force = (bool) $req->get_param( 'force' );
+        return $this->gallery->fetch( $force );
+    }
+
+    public function gallery_approve( $req ) {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return new WP_Error( 'forbidden', '仅管理员可操作', array( 'status' => 403 ) );
+        }
+        if ( ! $this->gallery ) { return new WP_Error( 'na', '图库组件未加载', array( 'status' => 500 ) ); }
+        $ids = (array) $req->get_param( 'ids' );
+        $n = $this->gallery->approve( $ids );
+        return array( 'ok' => true, 'approved' => $n );
+    }
+
+    public function gallery_reject( $req ) {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return new WP_Error( 'forbidden', '仅管理员可操作', array( 'status' => 403 ) );
+        }
+        if ( ! $this->gallery ) { return new WP_Error( 'na', '图库组件未加载', array( 'status' => 500 ) ); }
+        $ids = (array) $req->get_param( 'ids' );
+        $n = $this->gallery->reject( $ids );
+        return array( 'ok' => true, 'rejected' => $n );
+    }
+
 }

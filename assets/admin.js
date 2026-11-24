@@ -82,6 +82,20 @@
             }
         });
 
+        // 图库候选：拒绝按钮同步当前勾选到拒绝表单
+        $('#aicp-gal-reject-btn').on('click', function () {
+            var $holder = $('#aicp-gal-reject-holder');
+            $holder.empty();
+            var n = 0;
+            $('.aicp-gal-check:checked').each(function () {
+                $holder.append($('<input>', { type: 'hidden', name: 'gal_ids[]', value: $(this).val() }));
+                n++;
+            });
+            if (!n) { window.alert('请先勾选要拒绝的候选图。'); return; }
+            if (!window.confirm('确定拒绝选中的 ' + n + ' 张候选？')) { return; }
+            $('#aicp-gal-reject-form').submit();
+        });
+
         // 删除文章（REST）
         $('.aicp-del').on('click', function (e) {
             e.preventDefault();

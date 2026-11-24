@@ -10,11 +10,14 @@ class AICP_Admin {
     private $settings;
     /** @var AICP_Publisher */
     private $publisher;
+    /** @var AICP_Gallery */
+    private $gallery;
     private $page_slug = 'wp-ai-content-publisher';
 
-    public function __construct( $settings, $publisher ) {
+    public function __construct( $settings, $publisher, $gallery = null ) {
         $this->settings  = $settings;
         $this->publisher = $publisher;
+        $this->gallery   = $gallery;
 
         add_action( 'admin_menu', array( $this, 'add_menu' ) );
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
@@ -68,6 +71,7 @@ class AICP_Admin {
         check_admin_referer( 'aicp_save' );
         $tab = isset( $_POST['aicp_tab'] ) ? sanitize_key( $_POST['aicp_tab'] ) : 'ai';
         $this->settings->save_from_post( $_POST );
+        if ( $this->gallery && $tab === 'images' ) { $this->gallery->save_options( $_POST ); }
         wp_safe_redirect( admin_url( 'admin.php?page=' . $this->page_slug . '&tab=' . $tab . '&saved=1' ) );
         exit;
     }
@@ -78,7 +82,21 @@ class AICP_Admin {
         $action = isset( $_POST['aicp_do'] ) ? sanitize_key( $_POST['aicp_do'] ) : '';
         $msg = '';
 
-        if ( $action === 'publish' ) {
+        if ( $action === 'gallery_fetch' ) {
+            if ( ! $this->gallery ) { $msg = '图库组件未加载'; }
+            else {
+                $r = $this->gallery->fetch( true );
+                $msg = $r['message'];
+            }
+        } elseif ( $action === 'gallery_approve' ) {
+            $ids = isset( $_POST['gal_ids'] ) ? (array) $_POST['gal_ids'] : array();
+            $n = $this->gallery ? $this->gallery->approve( $ids ) : 0;
+            $msg = '已通过 ' . $n . ' 张候选，并入封面图池';
+        } elseif ( $action === 'gallery_reject' ) {
+            $ids = isset( $_POST['gal_ids'] ) ? (array) $_POST['gal_ids'] : array();
+            $n = $this->gallery ? $this->gallery->reject( $ids ) : 0;
+            $msg = '已拒绝 ' . $n . ' 张候选';
+        } elseif ( $action === 'publish' ) {
             $hint = isset( $_POST['hint'] ) ? sanitize_text_field( wp_unslash( $_POST['hint'] ) ) : '';
             $r = $this->publisher->maybe_publish( true, $hint );
             $msg = ! empty( $r['ok'] ) ? '已发布：《' . $r['title'] . '》' : '未发布：' . ( isset( $r['message'] ) ? $r['message'] : $r['reason'] );
@@ -423,6 +441,87 @@ class AICP_Admin {
         $this->field_number( '正文最短字数', 'min_body_len', $s['min_body_len'], 0, 5000, '原文正文低于此字数跳过，避免搬运摘要式快讯。' );
         echo '</table>';
         $this->form_close();
+
+        $this->tab_gallery();
+    }
+
+    /** 封面图库自动补货配置 + 候选审核 */
+    private function tab_gallery() {
+        if ( ! $this->gallery ) { return; }
+        $g = $this->gallery->options();
+        $cands = $this->gallery->candidates();
+        $pending = array();
+        foreach ( $cands as $c ) { if ( is_array( $c ) && ( $c['status'] ?? '' ) === 'pending' ) { $pending[] = $c; } }
+
+        echo '<hr><h2>封面图库自动补货</h2>';
+        echo '<p class="aicp-hint">图池不足时自动从 pixiv 抓<b>纯手绘</b>唯美风景横屏图，经质量闸门筛选后转存自有图床。抓到的图先进候选区，勾选通过才进图池（可切换为全自动）。</p>';
+
+        $this->form_open( 'images' );
+        echo '<table class="form-table">';
+        echo '<tr><th>自动补货</th><td><label><input type="checkbox" name="gal_enabled" value="1" ' . checked( $g['enabled'], 1, false ) . '> 开启（图池低于阈值时由定时任务自动补货）</label></td></tr>';
+        $this->field_textarea( '搜索标签', 'keywords', $g['keywords'], '每行一个 pixiv 标签，轮流抓取。推荐：風景 / 背景 / 青空 / 桜 / 雪山 / 草原 / 星空', 7 );
+        $this->field_number( '最低收藏数', 'min_bookmarks', $g['min_bookmarks'], 0, 100000, '收藏数低于此值淘汰，过滤冷门涂鸦。建议 100~300。' );
+        $this->field_number( '最小宽度(px)', 'min_width', $g['min_width'], 600, 5000, '图片宽度低于此值淘汰，保证清晰度。' );
+        $this->field_number( '每次抓取数', 'batch', $g['batch'], 1, 30, '单次补货最多通过的候选张数。' );
+        $this->field_number( '补货阈值', 'threshold', $g['threshold'], 0, 100, '图池剩余未用图低于此值时触发补货。' );
+        $this->field_number( '冷却小时', 'cooldown_hours', $g['cooldown_hours'], 1, 720, '两次自动补货的最小间隔，避免频繁请求 pixiv。' );
+        echo '<tr><th>人工审核</th><td><label><input type="checkbox" name="gal_review" value="1" ' . checked( $g['review'], 1, false ) . '> 抓到的图先进候选区，需勾选通过才进图池（强烈建议勾选）</label></td></tr>';
+        $this->field_text( '图库存储目录', 'store_dir', $g['store_dir'], '留空则沿用上方「自定义目录绝对路径」，图片存入其 gallery/ 子目录。' );
+        $this->field_text( '图库公开 URL', 'store_url', $g['store_url'], '留空则沿用上方「自定义目录公开 URL」。' );
+        echo '</table>';
+        echo '<p><button type="submit" class="button button-primary">保存补货设置</button></p>';
+        $this->form_close();
+
+        echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline; margin-right:8px">';
+        echo '<input type="hidden" name="action" value="aicp_action"><input type="hidden" name="aicp_do" value="gallery_fetch"><input type="hidden" name="aicp_tab" value="images">';
+        wp_nonce_field( 'aicp_action' );
+        echo '<button type="submit" class="button">立即抓一批候选</button></form>';
+
+        echo '<h3>候选图（' . count( $pending ) . ' 张待审核）</h3>';
+        if ( empty( $pending ) ) {
+            echo '<p class="aicp-hint">暂无候选。点上方「立即抓一批候选」开始。</p>';
+        } else {
+            echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+            echo '<input type="hidden" name="action" value="aicp_action">';
+            echo '<input type="hidden" name="aicp_do" value="gallery_approve">';
+            echo '<input type="hidden" name="aicp_tab" value="images">';
+            wp_nonce_field( 'aicp_action' );
+            echo '<div class="aicp-gallery-grid">';
+            foreach ( $pending as $c ) {
+                $id = (string) ( $c['id'] ?? '' );
+                $thumb = (string) ( $c['thumb'] ?? '' );
+                $local = (string) ( $c['local_url'] ?? '' );
+                $title = (string) ( $c['title'] ?? '' );
+                $bm = (int) ( $c['bm'] ?? 0 );
+                $wh = (int) ( $c['w'] ?? 0 ) . 'x' . (int) ( $c['h'] ?? 0 );
+                echo '<label class="aicp-gal-item" style="display:inline-block;width:180px;margin:8px;vertical-align:top;border:1px solid #ddd;border-radius:8px;padding:8px;background:#fff">';
+                echo '<input type="checkbox" class="aicp-gal-check" name="gal_ids[]" value="' . esc_attr( $id ) . '" ' . ( $local !== '' ? 'checked' : 'disabled' ) . '> ';
+                if ( $thumb ) { echo '<img src="' . esc_url( $thumb ) . '" style="width:100%;height:110px;object-fit:cover;border-radius:4px" loading="lazy">'; }
+                echo '<div style="font-size:12px;margin-top:6px;line-height:1.5">';
+                echo '<b>' . esc_html( mb_substr( $title, 0, 18 ) ) . '</b><br>';
+                echo '收藏 ' . $bm . ' · ' . esc_html( $wh ) . '<br>';
+                echo ( $local !== '' ? '<span style="color:#0a7c42">已转存</span>' : '<span style="color:#c00">转存失败</span>' );
+                echo '</div></label>';
+            }
+            echo '</div>';
+            echo '<p><button type="submit" class="button button-primary">通过勾选的图</button></p>';
+            echo '</form>';
+
+            echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" id="aicp-gal-reject-form" style="display:inline">';
+            echo '<input type="hidden" name="action" value="aicp_action"><input type="hidden" name="aicp_do" value="gallery_reject"><input type="hidden" name="aicp_tab" value="images">';
+            echo '<div id="aicp-gal-reject-holder"></div>';
+            wp_nonce_field( 'aicp_action' );
+            echo '<button type="button" class="button" id="aicp-gal-reject-btn">拒绝勾选的图</button></form>';
+        }
+
+        $logs = $this->gallery->logs();
+        if ( $logs ) {
+            echo '<h3>最近补货记录</h3><ul>';
+            foreach ( array_slice( array_reverse( $logs ), 0, 10 ) as $l ) {
+                echo '<li>' . esc_html( $l['time'] ?? '' ) . ' — ' . esc_html( $l['msg'] ?? '' ) . '</li>';
+            }
+            echo '</ul>';
+        }
     }
 
     private function tab_filters() {
