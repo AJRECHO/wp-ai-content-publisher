@@ -233,14 +233,40 @@ class AICP_Publisher {
     }
 
     /** 内容相关度打分：命中深度词加分，取分高者 */
-    private function title_score( $title ) {
+    private function title_score( $title, $cat = '' ) {
         $t = mb_strtolower( $title );
-        $depth = array( '评测','测评','上手','体验','试用','选购','怎么选','指南','教程','盘点','推荐','对比','横评','拆解','实测','深度','详解','解析','实践','折腾','搭建','部署','配置','优化','踩坑',
-            'review','hands-on','comparison','compared','buying','tested','benchmark','deep dive','explained','tutorial','setup','build','guide' );
-        foreach ( $depth as $kw ) {
-            if ( mb_strpos( $t, $kw ) !== false ) { return 90; }
+
+        // 新闻快讯 / 单条资讯直接淘汰（无论分类）
+        $news = array( '快讯', '简讯', '通报', '刚刚', '突发', '记者从', '获悉', '据消息', '网曝', '被曝', '曝光', '官宣', '开售', '发售', '正式发布', '据外媒', '外媒报道', '消息称', '据悉', '最新消息', 'breaking', ' just in', 'reportedly' );
+        foreach ( $news as $kw ) { if ( mb_strpos( $t, $kw ) !== false ) { return -1000; } }
+        if ( mb_strpos( $title, '；' ) !== false || mb_strpos( $title, '; ' ) !== false ) { return -1000; }
+
+        // 低价值稿淘汰：早报/周报、发版公告、活动问卷、交易帖、求助提问
+        $junk = array( '早报', '周报', '日报', '本周看', '新玩意', '正式发版', '发版', '版本更新', '更新公告', '发布了新版本', '大会将于', '问卷', '有奖', '报名', '统计', '调查',
+            '收鸡', '出鸡', '代开', '蹲', '求推荐', '求助', '请问', '怎么解决', '如何解决', '有没有大佬', '佬们', '佬友', '来一个',
+            'release notes', 'changelog', 'version ', 'survey', 'giveaway' );
+        foreach ( $junk as $kw ) { if ( mb_strpos( $t, $kw ) !== false ) { return -1000; } }
+
+        // 深度内容（评测/上手/选购/教程/对比/折腾/解析）
+        $depth = array( '评测', '测评', '上手', '体验', '试用', '选购', '怎么选', '如何选', '指南', '教程', '盘点', '推荐', '对比', '横评', '拆解', '实测', '深度', '值得买', '深入', '详解', '解析', '实践', '折腾', '搭建', '部署', '配置', '优化', '踩坑', '记录',
+            'review', 'hands-on', 'handson', 'guide', 'comparison', 'compared', 'buying', 'tested', 'benchmark', 'deep dive', 'explained', 'how to', 'tutorial', 'setup', 'build' );
+        $depth_hit = false;
+        foreach ( $depth as $kw ) { if ( mb_strpos( $t, $kw ) !== false ) { $depth_hit = true; break; } }
+
+        // 游戏类专项：不要攻略/密码/获取方法，只要新游戏/评分/测评/奖项/深度
+        if ( $cat === '游戏' ) {
+            $game_junk = array( '攻略', '获取方法', '获得方法', '怎么拿', '怎么获得', '如何获得', '密码', '保险箱', '获取', '位置', '流程', '通关', '收集', '解锁', '合成', '配方', '在哪', '哪里找', 'how to', 'guide', 'walkthrough', 'location', 'password', 'safe code', 'unlock', 'farm', 'obtain', 'where to find', 'tips and tricks' );
+            foreach ( $game_junk as $kw ) { if ( mb_strpos( $t, $kw ) !== false ) { return -1000; } }
+            $game_ctx = array( '游戏', 'gta', 'grand theft', 'nioh', '仁王', 'persona', '女神异闻', 'skyrim', '上古卷轴', 'elder scrolls', 'deltarune', 'steam', 'ubisoft', 'rockstar', 'bethesda', 'atlus', 'player', '玩家', 'console', 'ps5', 'xbox', 'nintendo', 'switch', 'dungeon', 'roguelite', 'rpg', 'fps', 'game ', 'games ', 'gaming', 'metascore', 'metacritic', 'opencritic' );
+            $has_ctx = false;
+            foreach ( $game_ctx as $kw ) { if ( mb_strpos( $t, $kw ) !== false ) { $has_ctx = true; break; } }
+            if ( ! $has_ctx ) { return -1000; }
+            $game_good = array( '评测', '测评', '评分', '评价', '新作', '新游', '新游戏', '获奖', '奖项', '年度游戏', '提名', '榜单', '排行', '排名', '销量', 'metascore', 'metacritic', 'opencritic', 'ign', 'tga', 'the game awards', 'review', 'rating', 'score', 'award', 'nominated', 'biggest', 'record', 'best-selling', 'deep dive', 'preview', 'first look', 'hands-on' );
+            foreach ( $game_good as $kw ) { if ( mb_strpos( $t, $kw ) !== false ) { return 100; } }
+            return $depth_hit ? 90 : 55;
         }
-        return 50;
+
+        return $depth_hit ? 90 : 55;
     }
 
     /* ------------------------------------------------------------------ *
@@ -287,7 +313,7 @@ class AICP_Publisher {
                     if ( $pub_ts <= 0 || ( $now_ts - $pub_ts ) > $max_age * DAY_IN_SECONDS ) { continue; }
                 }
                 $candidates[] = array(
-                    'score' => $this->title_score( $title ),
+                    'score' => $this->title_score( $title, $cat_name ),
                     'item'  => $it,
                     'link'  => $link,
                     'title' => $title,
