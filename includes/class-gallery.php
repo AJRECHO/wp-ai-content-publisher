@@ -32,8 +32,8 @@ class AICP_Gallery {
         return array(
             'enabled'        => 0,    // 自动补货开关
             'keywords'       => "風景\n背景\n青空\n桜\n雪山\n草原\n星空", // 搜索标签（每行一个）
-            'min_bookmarks'  => 100,  // 详情接口确认的最低收藏数
-            'min_width'      => 1200, // 最小宽度（保证清晰度）
+            'min_bookmarks'  => 50,   // 详情接口确认的最低收藏数（最新图收藏普遍偏低，阈值不宜过高）
+            'min_width'      => 900,  // 最小宽度（保证清晰度；过严会导致横图大量淘汰）
             'batch'          => 8,    // 每次补货抓取候选数上限
             'threshold'      => 5,    // 图池剩余低于此值时触发
             'cooldown_hours' => 24,   // 两次补货最小间隔（小时）
@@ -121,9 +121,10 @@ class AICP_Gallery {
     /** 水印/练习/杂物特征词（命中即淘汰，标题与标签都查） */
     private function bad_words() {
         return array(
-            '落書き', 'らくがき', '塗り練習', '練習', '练习', '下書き', '下描き', '速写',
+            '落書き', 'らくがき', '塗り練習', '練習', '练习', '描こう', '模写', '3D', 'blender', '下書き', '下描き', '速写',
             '日付', 'date', 'watermark', 'ウォーターマーク', 'sample', '見本', '模版',
             '人物', 'キャラ', '女の子', '男の子', '戦士', '战士', '少女', '少年', '女子', '男子', '骑士', '騎士', '魔女', '妹', '兄', '_portfolio', 'commission', '依頼',
+            'アニメ', 'anime', 'fate/', 'stay night', '博麗', '東方', '原神', '崩壊', '_onepiece', 'ドラゴンボール',
         );
     }
 
@@ -145,7 +146,7 @@ class AICP_Gallery {
         shuffle( $words );
 
         foreach ( $words as $word ) {
-            if ( count( $found ) >= $want * 4 ) { break; } // 多备几倍供精筛淘汰
+            if ( count( $found ) >= $want * 12 ) { break; } // 多备十几倍供精筛淘汰，避免好图排在后面没进候选池
             $q = rawurlencode( $word );
             $url = 'https://www.pixiv.net/ajax/search/illustrations/' . $q
                  . '?word=' . $q . '&mode=safe&order=date&p=1';
@@ -181,20 +182,20 @@ class AICP_Gallery {
     }
 
     /** 精筛：调详情接口拿收藏数与完整标签，按闸门淘汰 */
-    private function refine( $cand, $opt ) {
+    private function refine( $cand, $opt, &$stat ) {
         $j = $this->get_json( 'https://www.pixiv.net/ajax/illust/' . $cand['id'] );
-        if ( ! $j || empty( $j['body'] ) ) { return null; }
+        if ( ! $j || empty( $j['body'] ) ) { $stat['detail_http'] = ( $stat['detail_http'] ?? 0 ) + 1; return null; }
         $b = $j['body'];
 
         // 二次确认手绘 + 横屏 + 插画 + 宽度
-        if ( (int) ( $b['aiType'] ?? -1 ) !== 0 ) { return null; }
-        if ( (int) ( $b['illustType'] ?? -1 ) !== 0 ) { return null; }
-        if ( (int) ( $b['pageCount'] ?? 0 ) !== 1 ) { return null; }
+        if ( (int) ( $b['aiType'] ?? -1 ) !== 0 ) { $stat['detail_ai'] = ( $stat['detail_ai'] ?? 0 ) + 1; return null; }
+        if ( (int) ( $b['illustType'] ?? -1 ) !== 0 ) { $stat['detail_illust'] = ( $stat['detail_illust'] ?? 0 ) + 1; return null; }
+        if ( (int) ( $b['pageCount'] ?? 0 ) !== 1 ) { $stat['detail_page'] = ( $stat['detail_page'] ?? 0 ) + 1; return null; }
         $w = (int) ( $b['width'] ?? 0 ); $h = (int) ( $b['height'] ?? 0 );
-        if ( $w <= $h || $w < (int) $opt['min_width'] ) { return null; }
+        if ( $w <= $h || $w < (int) $opt['min_width'] ) { $stat['width_or_orientation'] = ( $stat['width_or_orientation'] ?? 0 ) + 1; return null; }
 
         $bm = (int) ( $b['bookmarkCount'] ?? 0 );
-        if ( $bm < (int) $opt['min_bookmarks'] ) { return null; }
+        if ( $bm < (int) $opt['min_bookmarks'] ) { $stat['bookmarks'] = ( $stat['bookmarks'] ?? 0 ) + 1; return null; }
 
         // 标题 + 标签坏词过滤
         $title = (string) ( $b['illustTitle'] ?? $cand['title'] );
@@ -209,14 +210,14 @@ class AICP_Gallery {
         }
         $text = $title . ' ' . implode( ' ', $tags );
         foreach ( $this->bad_words() as $bad ) {
-            if ( stripos( $text, $bad ) !== false ) { return null; }
+            if ( stripos( $text, $bad ) !== false ) { $stat['bad_word'] = ( $stat['bad_word'] ?? 0 ) + 1; return null; }
         }
 
         // 原图 URL：优先 regular（无水印、尺寸适中），无则 original
         $urls = $b['urls'] ?? array();
         $src = (string) ( $urls['regular'] ?? '' );
         if ( $src === '' ) { $src = (string) ( $urls['original'] ?? '' ); }
-        if ( $src === '' ) { return null; }
+        if ( $src === '' ) { $stat['no_url'] = ( $stat['no_url'] ?? 0 ) + 1; return null; }
 
         // 正向分：风景标签命中越多越优先
         $score = 0;
@@ -298,14 +299,17 @@ class AICP_Gallery {
 
         // 精筛，按正向分排序，最多取 batch 个
         $refined = array();
+        $stat    = array();
         foreach ( $cands as $c ) {
-            $r = $this->refine( $c, $opt );
+            $r = $this->refine( $c, $opt, $stat );
             if ( $r ) { $refined[] = $r; }
             if ( count( $refined ) >= (int) $opt['batch'] ) { break; }
         }
         if ( empty( $refined ) ) {
-            $this->log( '精筛后无合格图（收藏/标签/尺寸闸门过严？）' );
-            return $this->res( false, '没有通过质量闸门的图，可下调收藏数或放宽最小宽度' );
+            $detail = array();
+            foreach ( $stat as $k => $v ) { $detail[] = $k . '=' . $v; }
+            $this->log( '精筛后无合格图；粗筛 ' . count( $cands ) . ' 张，淘汰原因：' . implode( ' ', $detail ) );
+            return $this->res( false, '没有通过质量闸门的图（粗筛 ' . count( $cands ) . ' 张）；可下调收藏数或放宽最小宽度' );
         }
         usort( $refined, function ( $a, $b ) {
             if ( $a['score'] === $b['score'] ) { return $b['bm'] - $a['bm']; }
