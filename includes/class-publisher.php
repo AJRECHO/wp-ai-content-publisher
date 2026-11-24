@@ -367,8 +367,8 @@ class AICP_Publisher {
         $cover_mode = $this->settings->get( 'cover_mode', 'source' );
         if ( $cover_mode === 'custom' ) {
             $pool = $this->parse_urls( $this->settings->get( 'cover_urls', '' ) );
-            if ( ! empty( $pool ) ) {
-                $src = $pool[ mt_rand( 0, count( $pool ) - 1 ) ];
+            $src = $this->pick_cover_url( $pool );
+            if ( $src !== '' ) {
                 $cover_att_id = $this->store_cover( $src, $feed_url );
             }
         } elseif ( $cover_mode === 'source' && ! empty( $image_urls ) ) {
@@ -476,6 +476,37 @@ class AICP_Publisher {
             if ( $u !== '' && ( strpos( $u, 'http' ) === 0 ) ) { $out[] = $u; }
         }
         return array_values( array_unique( $out ) );
+    }
+
+    /**
+     * 封面洗牌袋：把图池打乱成队列依次取出，取完一轮才重新洗牌。
+     * 保证同一轮内不重复；图池内容变化（增删图）会自动重建队列。
+     */
+    private function pick_cover_url( $pool ) {
+        if ( empty( $pool ) ) { return ''; }
+        $sorted = $pool;
+        sort( $sorted, SORT_STRING );
+        $hash = md5( implode( "\n", $sorted ) );
+        $state = get_option( AICP_Settings::OPT_COVER_BAG, array() );
+        if ( ! is_array( $state ) ) { $state = array(); }
+        $bag = ( isset( $state['bag'] ) && is_array( $state['bag'] ) ) ? $state['bag'] : array();
+
+        // 图池变化或队列用尽 → 重新洗牌
+        if ( ! isset( $state['hash'] ) || $state['hash'] !== $hash || empty( $bag ) ) {
+            $bag = $pool;
+            shuffle( $bag );
+        }
+
+        $src = array_pop( $bag );
+        // 防御：若取出的已不在当前图池，重建后重取
+        if ( ! in_array( $src, $pool, true ) ) {
+            $bag = $pool;
+            shuffle( $bag );
+            $src = array_pop( $bag );
+        }
+
+        update_option( AICP_Settings::OPT_COVER_BAG, array( 'hash' => $hash, 'bag' => array_values( $bag ) ), false );
+        return $src;
     }
 
     private function flush_cache() {

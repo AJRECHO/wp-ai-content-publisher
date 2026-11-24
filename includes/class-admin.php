@@ -108,7 +108,7 @@ class AICP_Admin {
             update_option( AICP_Settings::OPT_LOG, array() );
             update_option( AICP_Settings::OPT_ROT, 0 );
             update_option( AICP_Settings::OPT_USED, array() );
-            delete_option( AICP_Settings::OPT_PUBTIME );
+            delete_option( AICP_Settings::OPT_PUBTIME ); delete_option( AICP_Settings::OPT_COVER_BAG );
             $msg = '已重置所有运行数据';
         } elseif ( $action === 'import' ) {
             $json = isset( $_POST['import_json'] ) ? wp_unslash( $_POST['import_json'] ) : '';

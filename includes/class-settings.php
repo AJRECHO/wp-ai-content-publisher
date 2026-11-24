@@ -12,6 +12,7 @@ class AICP_Settings {
     const OPT_USED = 'aicp_used_urls';
     const OPT_ROT  = 'aicp_rotation';
     const OPT_PUBTIME = 'aicp_pub_time';
+    const OPT_COVER_BAG = 'aicp_cover_bag'; // 封面洗牌袋：保证一轮内不重复
 
     /** 默认改写提示词（用户可在后台恢复到此值） */
     public static function default_prompt() {

@@ -154,7 +154,7 @@ class AICP_REST {
             update_option( AICP_Settings::OPT_LOG, array() );
             update_option( AICP_Settings::OPT_ROT, 0 );
             update_option( AICP_Settings::OPT_USED, array() );
-            delete_option( AICP_Settings::OPT_PUBTIME );
+            delete_option( AICP_Settings::OPT_PUBTIME ); delete_option( AICP_Settings::OPT_COVER_BAG );
             return array( 'ok' => true, 'reset' => 'log+rotation+used+pubtime' );
         }
         update_option( AICP_Settings::OPT_LOG, array() );
