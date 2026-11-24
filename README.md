@@ -1,4 +1,4 @@
-# WP AI Content Publisher（WP AI 内容发布）
+# WP AI Content Publisher（WordPress AI 内容发布插件）
 
 一个把 RSS 内容用 AI 忠实翻译润色后自动发布到 WordPress 的开源插件。抓取 → 筛选 → AI 改写 → 自动配图设封面 → 打标签 → 定时发布，全流程自动化。所有配置都在后台可视化设置，**开箱即用，无需改代码**。
 
