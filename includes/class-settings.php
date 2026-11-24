@@ -175,10 +175,15 @@ class AICP_Settings {
             }
             $next['feeds'] = $feeds;
         }
-        if ( isset( $post['categories'] ) && is_array( $post['categories'] ) ) {
+        // 分类列表是逗号分隔的文本框：兼容字符串（中英文逗号）与数组两种提交形式
+        if ( isset( $post['categories'] ) ) {
+            $raw = wp_unslash( $post['categories'] );
+            if ( is_string( $raw ) ) {
+                $raw = preg_split( '/[,，]/u', $raw );
+            }
             $cats = array();
-            foreach ( $post['categories'] as $c ) {
-                $c = sanitize_text_field( (string) $c );
+            foreach ( (array) $raw as $c ) {
+                $c = trim( sanitize_text_field( (string) $c ) );
                 if ( $c !== '' ) { $cats[] = $c; }
             }
             $next['categories'] = array_values( array_unique( $cats ) );
