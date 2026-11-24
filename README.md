@@ -1,4 +1,4 @@
-# AI Content Publisher（AI 内容发布）
+# WP AI Content Publisher（WP AI 内容发布）
 
 一个把 RSS 内容用 AI 忠实翻译润色后自动发布到 WordPress 的开源插件。抓取 → 筛选 → AI 改写 → 自动配图设封面 → 打标签 → 定时发布，全流程自动化。所有配置都在后台可视化设置，**开箱即用，无需改代码**。
 
@@ -16,10 +16,10 @@
 
 ## 安装
 
-1. 下载插件zip，保持目录结构解压到 `wp-content/plugins/ai-content-publisher/`。
-   - 目录结构应为：`ai-content-publisher.php` + `includes/` + `assets/` + `uninstall.php`
+1. 下载插件zip，保持目录结构解压到 `wp-content/plugins/wp-ai-content-publisher/`。
+   - 目录结构应为：`wp-ai-content-publisher.php` + `includes/` + `assets/` + `uninstall.php`
 2. 在 WordPress 后台「插件」中启用。
-3. 左侧菜单出现「AI 内容发布」，进入开始配置。
+3. 左侧菜单出现「WP AI 内容发布」，进入开始配置。
 
 > 也可用 GitHub 仓库直接安装（如托管在 WP 插件目录）。
 

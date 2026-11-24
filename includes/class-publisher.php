@@ -25,7 +25,7 @@ class AICP_Publisher {
     public function add_schedules( $schedules ) {
         $schedules['aicp_five_min'] = array(
             'interval' => 300,
-            'display'  => __( '每 5 分钟（AI Content Publisher）', 'ai-content-publisher' ),
+            'display'  => __( '每 5 分钟（WP AI Content Publisher）', 'wp-ai-content-publisher' ),
         );
         return $schedules;
     }

@@ -10,7 +10,7 @@ class AICP_Admin {
     private $settings;
     /** @var AICP_Publisher */
     private $publisher;
-    private $page_slug = 'ai-content-publisher';
+    private $page_slug = 'wp-ai-content-publisher';
 
     public function __construct( $settings, $publisher ) {
         $this->settings  = $settings;
@@ -26,8 +26,8 @@ class AICP_Admin {
 
     public function add_menu() {
         add_menu_page(
-            __( 'AI 内容发布', 'ai-content-publisher' ),
-            __( 'AI 内容发布', 'ai-content-publisher' ),
+            __( 'WP AI 内容发布', 'wp-ai-content-publisher' ),
+            __( 'WP AI 内容发布', 'wp-ai-content-publisher' ),
             'manage_options',
             $this->page_slug,
             array( $this, 'render_page' ),
@@ -36,8 +36,8 @@ class AICP_Admin {
         );
         add_submenu_page(
             $this->page_slug,
-            __( '设置', 'ai-content-publisher' ),
-            __( '设置', 'ai-content-publisher' ),
+            __( '设置', 'wp-ai-content-publisher' ),
+            __( '设置', 'wp-ai-content-publisher' ),
             'manage_options',
             $this->page_slug,
             array( $this, 'render_page' )
@@ -54,9 +54,9 @@ class AICP_Admin {
             'restKey' => (string) $this->settings->get( 'rest_key', '' ),
             'nonce'   => wp_create_nonce( 'aicp_ajax' ),
             'i18n'    => array(
-                'testing' => __( '测试中…', 'ai-content-publisher' ),
-                'ok'      => __( '✓ 连接成功', 'ai-content-publisher' ),
-                'fail'    => __( '✗ 连接失败', 'ai-content-publisher' ),
+                'testing' => __( '测试中…', 'wp-ai-content-publisher' ),
+                'ok'      => __( '✓ 连接成功', 'wp-ai-content-publisher' ),
+                'fail'    => __( '✗ 连接失败', 'wp-ai-content-publisher' ),
             ),
         ) );
     }
@@ -133,7 +133,7 @@ class AICP_Admin {
         if ( is_wp_error( $r ) ) {
             wp_send_json_error( array( 'message' => $r->get_error_message() ) );
         }
-        wp_send_json_success( array( 'message' => __( '连接成功，AI 接口可用', 'ai-content-publisher' ) ) );
+        wp_send_json_success( array( 'message' => __( '连接成功，AI 接口可用', 'wp-ai-content-publisher' ) ) );
     }
 
     public function ajax_preview() {
@@ -167,24 +167,24 @@ class AICP_Admin {
 
     public function render_page() {
         $tabs = array(
-            'dashboard' => __( '概览', 'ai-content-publisher' ),
-            'ai'        => __( 'AI 设置', 'ai-content-publisher' ),
-            'rules'     => __( '发布规则', 'ai-content-publisher' ),
-            'feeds'     => __( '内容源', 'ai-content-publisher' ),
-            'images'    => __( '图片与封面', 'ai-content-publisher' ),
-            'filters'   => __( '过滤规则', 'ai-content-publisher' ),
-            'tools'     => __( '工具与日志', 'ai-content-publisher' ),
+            'dashboard' => __( '概览', 'wp-ai-content-publisher' ),
+            'ai'        => __( 'AI 设置', 'wp-ai-content-publisher' ),
+            'rules'     => __( '发布规则', 'wp-ai-content-publisher' ),
+            'feeds'     => __( '内容源', 'wp-ai-content-publisher' ),
+            'images'    => __( '图片与封面', 'wp-ai-content-publisher' ),
+            'filters'   => __( '过滤规则', 'wp-ai-content-publisher' ),
+            'tools'     => __( '工具与日志', 'wp-ai-content-publisher' ),
         );
         $tab = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'dashboard';
         if ( ! isset( $tabs[ $tab ] ) ) { $tab = 'dashboard'; }
 
         echo '<div class="wrap aicp-wrap">';
         echo '<h1 class="aicp-title"><span class="dashicons dashicons-controls-play"></span> '
-            . esc_html__( 'AI 内容发布', 'ai-content-publisher' )
+            . esc_html__( 'WP AI 内容发布', 'wp-ai-content-publisher' )
             . ' <small>v' . esc_html( AICP_VERSION ) . '</small></h1>';
 
         if ( isset( $_GET['saved'] ) ) {
-            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( '设置已保存。', 'ai-content-publisher' ) . '</p></div>';
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( '设置已保存。', 'wp-ai-content-publisher' ) . '</p></div>';
         }
         if ( ! empty( $_GET['notice'] ) ) {
             echo '<div class="notice notice-info is-dismissible"><p>' . esc_html( rawurldecode( $_GET['notice'] ) ) . '</p></div>';
@@ -221,7 +221,7 @@ class AICP_Admin {
     }
 
     private function form_close( $label = null ) {
-        submit_button( $label ? $label : __( '保存设置', 'ai-content-publisher' ), 'primary', 'submit', false );
+        submit_button( $label ? $label : __( '保存设置', 'wp-ai-content-publisher' ), 'primary', 'submit', false );
         echo '</form>';
     }
 
@@ -343,7 +343,7 @@ class AICP_Admin {
         echo '<table class="form-table">';
         $this->field_textarea( 'Prompt 模板', 'prompt', $s['prompt'], '', 16 );
         echo '</table>';
-        echo '<button type="submit" class="button">' . esc_html__( '保存提示词', 'ai-content-publisher' ) . '</button> ';
+        echo '<button type="submit" class="button">' . esc_html__( '保存提示词', 'wp-ai-content-publisher' ) . '</button> ';
         echo '<button type="button" class="button" id="aicp-restore-prompt">恢复默认提示词</button>';
         echo '</form>';
     }
@@ -433,7 +433,7 @@ class AICP_Admin {
         echo '<table class="form-table">';
         $this->field_textarea( '黑名单关键词', 'blacklist', $s['blacklist'], '', 18 );
         echo '</table>';
-        echo '<button type="submit" class="button button-primary">' . esc_html__( '保存过滤词表', 'ai-content-publisher' ) . '</button> ';
+        echo '<button type="submit" class="button button-primary">' . esc_html__( '保存过滤词表', 'wp-ai-content-publisher' ) . '</button> ';
         echo '</form>';
         echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline">';
         echo '<input type="hidden" name="action" value="aicp_action"><input type="hidden" name="aicp_do" value="restore_blacklist"><input type="hidden" name="aicp_tab" value="filters">';

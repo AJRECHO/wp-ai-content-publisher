@@ -1,4 +1,4 @@
-/* AI Content Publisher — 后台交互 */
+/* WP AI Content Publisher — 后台交互 */
 (function ($) {
     'use strict';
 
