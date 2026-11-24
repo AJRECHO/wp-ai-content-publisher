@@ -1,12 +1,12 @@
 <?php
 /**
- * Plugin Name:       WP WP AI Content Publisher
+ * Plugin Name:       WP AI Content Publisher
  * Plugin URI:        https://github.com/AJRECHO/wp-ai-content-publisher
  * Description:       从 RSS 自动抓取文章，用 AI（DeepSeek / 任意 OpenAI 兼容接口）忠实翻译润色成中文，自动配图、设封面、打标签后发布到 WordPress。支持定时随机发布、谷时省费、分类轮换、关键词过滤。所有配置均在后台可视化设置，开箱即用。
  * Version:           1.0.0
  * Requires at least: 5.6
  * Requires PHP:      7.4
- * Author:            WP WP AI Content Publisher Contributors
+ * Author:            WP AI Content Publisher Contributors
  * Author URI:        https://github.com/AJRECHO/wp-ai-content-publisher
  * License:           MIT
  * License URI:       https://opensource.org/licenses/MIT
