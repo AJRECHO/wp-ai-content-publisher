@@ -496,7 +496,9 @@ class AICP_Admin {
                 $wh = (int) ( $c['w'] ?? 0 ) . 'x' . (int) ( $c['h'] ?? 0 );
                 echo '<label class="aicp-gal-item" style="display:inline-block;width:180px;margin:8px;vertical-align:top;border:1px solid #ddd;border-radius:8px;padding:8px;background:#fff">';
                 echo '<input type="checkbox" class="aicp-gal-check" name="gal_ids[]" value="' . esc_attr( $id ) . '" ' . ( $local !== '' ? 'checked' : 'disabled' ) . '> ';
-                if ( $thumb ) { echo '<img src="' . esc_url( $thumb ) . '" style="width:100%;height:110px;object-fit:cover;border-radius:4px" loading="lazy">'; }
+                // 缩略图必须用已转存到自有图床的地址：pixiv 直链有防盗链，浏览器加载会 403 破图
+                $img = ( $local !== '' ) ? $local : '';
+                if ( $img ) { echo '<img src="' . esc_url( $img ) . '" style="width:100%;height:110px;object-fit:cover;border-radius:4px;background:#f0f0f0" loading="lazy">'; }
                 echo '<div style="font-size:12px;margin-top:6px;line-height:1.5">';
                 echo '<b>' . esc_html( mb_substr( $title, 0, 18 ) ) . '</b><br>';
                 echo '收藏 ' . $bm . ' · ' . esc_html( $wh ) . '<br>';
