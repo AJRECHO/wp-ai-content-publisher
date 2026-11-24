@@ -378,7 +378,7 @@ class AICP_Admin {
         $this->field_text( '随机起始时间', 'random_start', $s['random_start'], '格式 HH:MM', 'text', 'placeholder="06:00"' );
         $this->field_text( '随机结束时间', 'random_end', $s['random_end'], '格式 HH:MM', 'text', 'placeholder="23:55"' );
         $this->field_text( '固定发布时间', 'fixed_time', $s['fixed_time'], '仅"固定时间"模式生效，格式 HH:MM', 'text', 'placeholder="20:00"' );
-        $this->field_checkbox( '谷时省钱', 'offpeak', $s['offpeak'], '只在高峰时段之外发布（DeepSeek 5 折），随机点若落在高峰期会自动顺延。' );
+        $this->field_checkbox( '避开高峰时段', 'offpeak', $s['offpeak'], '仅在设定的高峰时段之外发布；若随机时间点落入高峰时段，将自动顺延至高峰结束。' );
         $this->field_textarea( '高峰时段', 'peak_ranges', $s['peak_ranges'], '每行一段，格式 HH:MM-HH:MM；周末默认不限制。', 4 );
         $this->field_number( '每日上限', 'daily_limit', $s['daily_limit'], 0, 50, '0 表示不限制。手动删除文章会自动释放配额。' );
         $this->field_number( '时效天数', 'max_age', $s['max_age'], 0, 365, '只搬运最近 N 天发布的文章，0 = 不限制。' );
@@ -454,7 +454,7 @@ class AICP_Admin {
         foreach ( $cands as $c ) { if ( is_array( $c ) && ( $c['status'] ?? '' ) === 'pending' ) { $pending[] = $c; } }
 
         echo '<hr><h2>封面图库自动补货</h2>';
-        echo '<p class="aicp-hint">图池不足时自动从 pixiv 抓<b>纯手绘</b>唯美风景横屏图，经质量闸门筛选后转存自有图床。抓到的图先进候选区，勾选通过才进图池（可切换为全自动）。</p>';
+        echo '<p class="aicp-hint">图池不足时自动从图片来源抓取<b>手绘</b>风景类横屏插画，经质量规则筛选后转存自有图床。抓到的图先进候选区，勾选通过才进图池（可切换为全自动）。</p>';
 
         $this->form_open( 'images' );
         echo '<table class="form-table">';

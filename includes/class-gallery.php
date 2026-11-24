@@ -2,11 +2,11 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * 封面图库自动补货：从 pixiv 标签搜索抓纯手绘唯美风景横屏图，
+ * 封面图库自动补货：从图片来源按标签搜索抓取手绘风景类横屏插画，
  * 经质量闸门筛选后转存自有图床，作为候选待审核，通过后并入封面图池。
  *
  * 设计要点（见 README「封面图库自动补货」）：
- * - 只收 aiType=0 纯手绘；order=date（热门榜已被 AI 占据）
+ * - 只收 aiType=0 手绘作品；order=date（热门榜多为 AI 生成内容）
  * - 搜索结果零成本粗筛，详情接口精筛收藏数/水印标签
  * - 所有下载图片转存本地，源站失效不影响已发布文章
  * - pixiv ID 去重，抓过的永不重复抓
@@ -127,7 +127,7 @@ class AICP_Gallery {
         );
     }
 
-    /** 唯美风景正向标签（命中越多越优先，非硬性） */
+    /** 风景类正向标签（命中越多越优先，非硬性） */
     private function good_words() {
         return array( '風景', '背景', '青空', '空', '雲', '桜', '雪', '山', '草原', '湖', '海', '夕焼け', '星空', '银河', '花', '自然', '風景画', 'scenery', 'landscape', 'sky' );
     }
@@ -138,7 +138,7 @@ class AICP_Gallery {
         $found = array();
         $seen  = array();
 
-        // 关键词轮流抓，直到够数；order=date 才有足量纯手绘
+        // 关键词轮流抓取，直到够数；order=date 才有足量手绘作品
         $words = preg_split( '/\R/u', trim( $keywords ) );
         $words = array_values( array_filter( array_map( 'trim', $words ) ) );
         if ( empty( $words ) ) { $words = array( '風景' ); }
@@ -155,7 +155,7 @@ class AICP_Gallery {
                 if ( ! is_array( $it ) ) { continue; }
                 $id = (string) ( $it['id'] ?? '' );
                 if ( $id === '' || isset( $seen[ $id ] ) || in_array( $id, $fetched, true ) ) { continue; }
-                // 粗筛：纯手绘插画、横屏、单页、有一定宽度
+                // 粗筛：手绘插画、横屏、单页、有一定宽度
                 if ( (int) ( $it['aiType'] ?? -1 ) !== 0 ) { $seen[ $id ] = 1; continue; }
                 if ( (int) ( $it['illustType'] ?? -1 ) !== 0 ) { $seen[ $id ] = 1; continue; }
                 if ( (int) ( $it['pageCount'] ?? 0 ) !== 1 ) { $seen[ $id ] = 1; continue; }
@@ -186,7 +186,7 @@ class AICP_Gallery {
         if ( ! $j || empty( $j['body'] ) ) { return null; }
         $b = $j['body'];
 
-        // 二次确认纯手绘 + 横屏 + 插画 + 宽度
+        // 二次确认手绘 + 横屏 + 插画 + 宽度
         if ( (int) ( $b['aiType'] ?? -1 ) !== 0 ) { return null; }
         if ( (int) ( $b['illustType'] ?? -1 ) !== 0 ) { return null; }
         if ( (int) ( $b['pageCount'] ?? 0 ) !== 1 ) { return null; }

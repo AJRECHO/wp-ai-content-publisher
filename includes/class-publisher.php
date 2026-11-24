@@ -58,7 +58,7 @@ class AICP_Publisher {
         catch ( Exception $e ) { return new DateTimeZone( 'Asia/Shanghai' ); }
     }
 
-    /** 当前时间是否落在"高峰期"（高峰期不发布，配合谷时省钱） */
+    /** 当前时间是否落在"高峰期"（高峰期不发布） */
     private function is_peak_at( $dt ) {
         $ranges = (string) $this->settings->get( 'peak_ranges', '' );
         $dow = (int) $dt->format( 'N' ); // 1=周一 7=周日
@@ -92,7 +92,7 @@ class AICP_Publisher {
             $end   = $this->parse_hm( $this->settings->get( 'random_end', '23:55' ) );
             if ( $end <= $start ) { $end = $start + 1; }
             $hm = $start + mt_rand( 0, $end - $start );
-            // 随机点若落在高峰期，顺延到高峰结束（保证省钱）
+            // 随机点若落在高峰期，顺延到高峰结束
             if ( $this->settings->get( 'offpeak' ) ) {
                 $cand = clone $now;
                 $cand->setTime( (int) ( $hm / 60 ), $hm % 60, 0 );
