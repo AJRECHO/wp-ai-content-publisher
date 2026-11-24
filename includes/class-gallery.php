@@ -31,7 +31,7 @@ class AICP_Gallery {
     public static function default_options() {
         return array(
             'enabled'        => 0,    // 自动补货开关
-            'keywords'       => "風景\n背景\n青空\n桜\n雪山\n草原\n星空", // 搜索标签（每行一个）
+            'keywords'       => "風景1000users入り\n風景500users入り\n背景1000users入り\n風景\n背景", // 搜索标签：高收藏标签出图率远高于普通标签（每行一个）
             'min_bookmarks'  => 50,   // 详情接口确认的最低收藏数（最新图收藏普遍偏低，阈值不宜过高）
             'min_width'      => 900,  // 最小宽度（保证清晰度；过严会导致横图大量淘汰）
             'batch'          => 8,    // 每次补货抓取候选数上限
